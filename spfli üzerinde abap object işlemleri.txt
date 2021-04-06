@@ -1,0 +1,145 @@
+*-----------------------------
+* KADİR Değer
+*kadirdegr1997@gmail.com
+*-------------------
+*Abap object internal table işlemleri 05.04.2021
+
+CLASS flights DEFINITION.
+  PUBLIC SECTION.
+* types: fl_tab_type type standard table of spfli.
+* data: flight_table type fl_tab_type read-only.
+
+    METHODS constructor.                           "kayıtları internal table'a yükleme methodu
+
+    METHODS showALLDATA.                            " tüm verileri ekrana yazdıran method
+
+    METHODS showConnidData                          "CİD=CONNECTION ID   " bağlantı kimliği alarak verilen alanları yazdıran method
+      IMPORTING cid TYPE S_CONN_ID.
+
+    METHODS numFlightsTo                            "hava alanı kodu alıp oraya giden uçuşları listeleyen method
+     IMPORTING city type S_TO_CITY
+       RETURNING VALUE(numflights) type i.
+
+
+    METHODS getConnid                               " bu methodta kalkış ver varış olarak 2 hava alanı kodu alıcaktır.
+     IMPORTING cityfrom type s_from_cıt
+               cityto   type s_to_city
+      RETURNING VALUE(connid) type s_conn_id.
+
+    METHODS getFlightTime                           "connection id alır ve uçuş süresini döndüren method
+    IMPORTING cid type S_CONN_ID
+      RETURNING VALUE(minutes) type i.
+
+    METHODS getAllConnectionFacts                   " connection id alıp onunla ilgili bütün bilgileri döndüren method.
+    IMPORTING cid type S_CONN_ID
+      RETURNING VALUE(conn) type SPFLI.
+
+
+
+  PRIVATE SECTION.
+    TYPES: fl_tab_type TYPE STANDARD TABLE OF SPFLI.
+    DATA: flight_table TYPE fl_tab_type.
+
+
+
+ENDCLASS.          "flights definition
+
+
+CLASS flights IMPLEMENTATION.
+
+  METHOD constructor.
+    SELECT * FROM spfli INTO TABLE flight_table.
+    IF sy-subrc <> 0.
+      WRITE: 'SPFLI database tablosunda bir sorun var '.
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD showALLDATA.
+    data: wa type spfli.
+    loop at flight_table into wa.
+      WRITE: / wa-carrid, 5 wa-connid, 10 wa-countryfr, 14 wa-cityfrom, 36 wa-airpfrom, 40 wa-countryto, 44 wa-cityto, 66 wa-airpto, 69 wa-fltime ,
+      77 wa-deptime, 87 wa-arrtime, 97 wa-distance, 107 wa-distid, 110 wa-fltype, 115 wa-period.
+      endloop.
+      uline.
+
+    ENDMETHOD.
+
+
+  METHOD showConnidData.
+    DATA: wa type spfli.
+
+    read TABLE flight_table into wa with key connid = cid.
+    if sy-subrc = 0 .
+      write: / wa-cityfrom, 22 wa-airpfrom , 27 wa-countryto , 49 wa-fltime , 54 wa-distance.
+      else.
+        write: 'Kayıt eşleştirilimedi: ', cid.
+        ENDIF.
+   ENDMETHOD.
+
+  METHOD numFlightsTo.
+    loop at flight_table TRANSPORTING NO FIELDS where airpto = city.
+      numflights = numflights + 1.
+      ENDLOOP.
+
+   ENDMETHOD.
+
+  METHOD getConnid.
+    data: wa type spfli.
+
+    connid = 0.
+    read TABLE flight_table into wa WITH key AIRPFROM = cityfrom
+                                            AIRPTO   = cityto.
+    connid = wa-connid.
+
+
+   ENDMETHOD.
+
+  METHOD getFlightTime.
+   data: wa type SPFLI.
+
+    minutes = 0.
+    read TABLE flight_table into wa WITH key  connid = cid.
+    minutes = wa-FLTIME.
+
+
+    ENDMETHOD.
+
+  METHOD getAllConnectionFacts.
+
+    CLEAR conn.
+    read TABLE flight_table into CONN WITH key  connid = cid.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+
+START-OF-SELECTION.
+
+data: temp type i,  "template
+      wa type spfli.
+
+DATA my_flight_class TYPE REF TO flights.
+CREATE OBJECT my_flight_class.
+
+my_flight_class->showALLData( ).
+
+my_flight_class->showConnidData( 1984 ).
+uline.
+
+temp = my_flight_class->numFlightsTo( 'JFK' ).
+WRITE temp.
+uline.
+
+temp = my_flight_class->getConnid( cityfrom = 'JFK' cityto ='FRA' ).
+write temp.
+uline.
+
+temp = my_flight_class->getFlightTime( 3504 ).
+WRITE temp.
+uline.
+
+wa = my_flight_class->getAllConnectionFacts( 3504 ).
+  WRITE: / wa-carrid, 5 wa-connid, 10 wa-countryfr, 14 wa-cityfrom, 36 wa-airpfrom, 40 wa-countryto,
+  44 wa-cityto, 66 wa-airpto, 69 wa-fltime, 77 wa-deptime, 87 wa-arrtime, 97 wa-distance, 107 wa-distid,
+  110 wa-fltype, 115 wa-period.
